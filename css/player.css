@@ -1,0 +1,215 @@
+/* ===================================================
+   FLIXFLIX CINEMA VIDEO PLAYER - STYLESHEET
+   =================================================== */
+
+.cinema-player-wrapper {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background-color: #000;
+  border-radius: 1.5rem;
+  overflow: hidden;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+  user-select: none;
+}
+
+.cinema-video-el {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  cursor: pointer;
+  background: #000;
+}
+
+/* Gradients */
+.player-top-overlay {
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.4) 60%, transparent 100%);
+  transition: opacity 0.3s ease;
+}
+
+.player-bottom-overlay {
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.95) 0%, rgba(0, 0, 0, 0.7) 60%, transparent 100%);
+  transition: opacity 0.3s ease;
+}
+
+/* Big Central Play Button */
+.cinema-center-play {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.cinema-center-play-circle {
+  width: 5rem;
+  height: 5rem;
+  border-radius: 9999px;
+  background: rgba(229, 9, 20, 0.9);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 35px rgba(229, 9, 20, 0.6);
+  transition: transform 0.2s ease;
+}
+
+.cinema-player-wrapper:hover .cinema-center-play-circle {
+  transform: scale(1.08);
+}
+
+/* Timeline Scrubber */
+.timeline-track-bg {
+  width: 100%;
+  height: 6px;
+  background: rgba(75, 85, 99, 0.5);
+  border-radius: 9999px;
+  position: relative;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.timeline-buffer-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  background: rgba(156, 163, 175, 0.4);
+  width: 0%;
+  transition: width 0.2s ease;
+}
+
+.timeline-progress-fill {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  background: linear-gradient(to right, #ff416c, #e50914);
+  width: 0%;
+}
+
+.custom-range-scrubber {
+  -webkit-appearance: none;
+  appearance: none;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+  z-index: 10;
+}
+
+.custom-range-scrubber:hover,
+.cinema-player-wrapper:hover .custom-range-scrubber {
+  opacity: 1;
+}
+
+.custom-range-scrubber::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #e50914;
+  box-shadow: 0 0 12px rgba(229, 9, 20, 1);
+  cursor: pointer;
+  margin-top: -5px;
+  transition: transform 0.1s ease;
+}
+
+.custom-range-scrubber:hover::-webkit-slider-thumb {
+  transform: scale(1.3);
+}
+
+.custom-range-scrubber::-webkit-slider-runnable-track {
+  width: 100%;
+  height: 6px;
+  background: transparent;
+  border-radius: 9999px;
+}
+
+/* Control Buttons & Dropdowns */
+.cinema-btn {
+  background: transparent;
+  border: none;
+  color: #e5e7eb;
+  padding: 0.35rem;
+  border-radius: 0.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: color 0.15s ease, background-color 0.15s ease;
+}
+
+.cinema-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.cinema-pill-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.35rem 0.65rem;
+  border-radius: 0.5rem;
+  background: rgba(31, 41, 55, 0.8);
+  color: #f3f4f6;
+  border: 1px solid rgba(75, 85, 99, 0.5);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.cinema-pill-btn:hover {
+  background: rgba(55, 65, 81, 0.9);
+  color: #fff;
+}
+
+/* Popup Menus */
+.cinema-popup-menu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: 0;
+  background: #12141a;
+  border: 1px solid #222634;
+  border-radius: 0.75rem;
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.8);
+  padding: 0.35rem;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.cinema-menu-item {
+  width: 100%;
+  text-align: left;
+  padding: 0.4rem 0.65rem;
+  border-radius: 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #d1d5db;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.cinema-menu-item:hover {
+  background: #e50914;
+  color: #fff;
+}
+
+.cinema-menu-item.active {
+  background: #e50914;
+  color: #fff;
+  font-weight: 800;
+}
