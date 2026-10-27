@@ -155,6 +155,35 @@
   </div>
 
   <!-- ============================================== -->
+  <!-- VEGAMOVIES VERSION / SEASON SELECTION MODAL -->
+  <!-- ============================================== -->
+  <div id="vegaVersionsModal" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="bg-brand-card border border-brand-border rounded-3xl max-w-2xl w-full p-6 shadow-2xl relative max-h-[85vh] flex flex-col">
+      <button onclick="closeVegaVersionsModal()" class="absolute top-5 right-5 text-gray-400 hover:text-white p-1 rounded-lg hover:bg-brand-border transition-colors">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+      <div class="flex items-center gap-3 mb-4 pb-3 border-b border-brand-border/60">
+        <div class="w-10 h-10 rounded-xl bg-brand-emerald/20 text-brand-emerald flex items-center justify-center flex-shrink-0">
+          <i data-lucide="layers" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <h3 id="vegaModalTitle" class="text-lg font-bold text-white">Select VegaMovies Release</h3>
+          <p id="vegaModalSubtitle" class="text-xs text-gray-400">Multiple versions/seasons found on VegaMovies. Choose one to stream:</p>
+        </div>
+      </div>
+      <div id="vegaVersionsList" class="space-y-3 overflow-y-auto pr-1 flex-1 scrollbar-none">
+        <!-- populated dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="searchToast" class="hidden fixed bottom-6 right-6 z-50 bg-brand-card border border-brand-emerald/40 text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-3">
+    <div class="w-4 h-4 border-2 border-brand-emerald border-t-transparent rounded-full animate-spin"></div>
+    <span id="searchToastText" class="text-xs font-semibold">Searching VegaMovies...</span>
+  </div>
+
+  <!-- ============================================== -->
   <!-- MAIN CONTAINER -->
   <!-- ============================================== -->
   <main class="pt-24 pb-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
@@ -664,70 +693,101 @@
         let tmdbResults = [];
         if (tmdbRes.status === 'fulfilled') {
           const tmdbData = await tmdbRes.value.json();
-          tmdbResults = (tmdbData.results || []).slice(0, 4);
+          tmdbResults = (tmdbData.results || []).slice(0, 5);
         }
 
         let vegaResults = [];
         if (vegaRes.status === 'fulfilled') {
           const vegaData = await vegaRes.value.json();
-          vegaResults = (vegaData.hits || []).slice(0, 4);
+          vegaResults = (vegaData.hits || []).slice(0, 5);
         }
 
         if (tmdbResults.length === 0 && vegaResults.length === 0) {
           container.innerHTML = `
-            <div class="p-4 text-center text-xs text-gray-400">
+            <div class="p-6 text-center text-xs text-gray-400">
+              <i data-lucide="search-x" class="w-6 h-6 mx-auto mb-2 text-gray-500"></i>
               No results found for "${query}"
             </div>
           `;
           searchDropdown.classList.remove('hidden');
+          lucide.createIcons();
           return;
         }
 
         let html = '';
 
+        // 1. VEGAMOVIES DIRECT RELEASES (Instant 1-Click Play)
+        if (vegaResults.length > 0) {
+          html += `
+            <div class="flex items-center justify-between px-3 pt-2.5 pb-1 text-[11px] font-bold text-brand-emerald uppercase tracking-wider border-b border-brand-border/40">
+              <span class="flex items-center gap-1.5"><i data-lucide="zap" class="w-3.5 h-3.5 fill-current"></i> VegaMovies Releases (Instant Play)</span>
+              <span class="text-[10px] text-gray-400 font-normal">Direct Stream</span>
+            </div>
+            <div class="space-y-1 p-1">
+          `;
+          html += vegaResults.map(v => {
+            const thumb = v.thumbnail || 'https://upload.wikimedia.org/wikipedia/commons/6/65/No-Image-Placeholder.svg';
+            return `
+              <div onclick="playDirectVegaUrl('${v.fullUrl}')" class="flex items-center gap-3 p-2 rounded-xl hover:bg-brand-emerald/15 cursor-pointer transition-all group">
+                <img src="${thumb}" alt="${escapeJs(v.title)}" class="w-11 h-14 object-cover rounded-lg flex-shrink-0 border border-brand-border" />
+                <div class="flex-1 min-w-0">
+                  <div class="text-xs font-bold text-white group-hover:text-brand-emerald line-clamp-1 leading-snug">${v.title}</div>
+                  <div class="flex items-center gap-2 text-[11px] text-gray-400 mt-1">
+                    <span class="px-1.5 py-0.2 rounded bg-brand-emerald/20 text-brand-emerald text-[10px] font-semibold">VEGA</span>
+                    <span>Direct Drivers & Multi-Audio</span>
+                  </div>
+                </div>
+                <button onclick="event.stopPropagation(); playDirectVegaUrl('${v.fullUrl}')" class="text-xs font-bold px-3 py-1.5 rounded-lg bg-brand-emerald hover:bg-emerald-600 text-white flex items-center gap-1.5 shadow-md shadow-brand-emerald/20 transition-all flex-shrink-0">
+                  <i data-lucide="play" class="w-3 h-3 fill-current"></i>
+                  <span>Watch</span>
+                </button>
+              </div>
+            `;
+          }).join('');
+          html += `</div>`;
+        }
+
+        // 2. TMDB MOVIES & WEB SERIES
         if (tmdbResults.length > 0) {
+          html += `
+            <div class="flex items-center justify-between px-3 pt-3 pb-1 text-[11px] font-bold text-brand-cyan uppercase tracking-wider border-b border-brand-border/40">
+              <span class="flex items-center gap-1.5"><i data-lucide="film" class="w-3.5 h-3.5 text-brand-red"></i> TMDB Cinema & Series</span>
+              <span class="text-[10px] text-gray-400 font-normal">Match Vega Release</span>
+            </div>
+            <div class="space-y-1 p-1">
+          `;
           html += tmdbResults.map(m => {
             const poster = m.poster_path ? `${TMDB_IMG_POSTER}${m.poster_path}` : 'https://upload.wikimedia.org/wikipedia/commons/6/65/No-Image-Placeholder.svg';
             const year = m.release_date ? m.release_date.split('-')[0] : 'N/A';
-            const rating = m.vote_average ? m.vote_average.toFixed(1) : 'NR';
+            const rating = m.vote_average ? Number(m.vote_average).toFixed(1) : 'NR';
+            const isTv = m.media_type === 'tv';
+            const typeBadge = isTv ? 'bg-purple-500/20 text-purple-400 border-purple-500/30' : 'bg-blue-500/20 text-blue-400 border-blue-500/30';
+            const typeLabel = isTv ? 'SERIES' : 'MOVIE';
+
             return `
-              <div onclick="selectMovie(${m.id})" class="flex items-center gap-3 p-2 rounded-xl hover:bg-brand-border/60 cursor-pointer transition-colors group">
-                <img src="${poster}" alt="${m.title}" class="w-10 h-14 object-cover rounded-lg flex-shrink-0" />
+              <div onclick="selectMovie(${m.id}, '${m.media_type || 'movie'}', '${escapeJs(m.title)}')" class="flex items-center gap-3 p-2 rounded-xl hover:bg-brand-border/60 cursor-pointer transition-all group">
+                <img src="${poster}" alt="${escapeJs(m.title)}" class="w-11 h-14 object-cover rounded-lg flex-shrink-0 border border-brand-border" />
                 <div class="flex-1 min-w-0">
-                  <div class="text-sm font-bold text-white group-hover:text-brand-red truncate">${m.title}</div>
-                  <div class="flex items-center gap-2 text-xs text-gray-400 mt-0.5">
+                  <div class="flex items-center gap-2">
+                    <span class="text-[10px] font-extrabold px-1.5 py-0.2 rounded border ${typeBadge}">${typeLabel}</span>
+                    <span class="text-xs font-bold text-white group-hover:text-brand-red truncate">${m.title}</span>
+                  </div>
+                  <div class="flex items-center gap-2 text-[11px] text-gray-400 mt-1">
                     <span>${year}</span>
                     <span>•</span>
-                    <span class="flex items-center gap-0.5 text-yellow-400">
+                    <span class="flex items-center gap-0.5 text-yellow-400 font-semibold">
                       <i data-lucide="star" class="w-3 h-3 fill-current"></i> ${rating}
                     </span>
                   </div>
                 </div>
-                <div class="text-xs font-semibold px-2 py-1 rounded bg-brand-border text-gray-300 group-hover:bg-brand-red group-hover:text-white transition-all">
-                  Play
-                </div>
+                <button onclick="event.stopPropagation(); selectMovie(${m.id}, '${m.media_type || 'movie'}', '${escapeJs(m.title)}')" class="text-xs font-semibold px-3 py-1.5 rounded-lg bg-brand-border text-gray-300 group-hover:bg-brand-red group-hover:text-white transition-all flex items-center gap-1.5 flex-shrink-0">
+                  <i data-lucide="search" class="w-3 h-3"></i>
+                  <span>Stream</span>
+                </button>
               </div>
             `;
           }).join('');
-        }
-
-        if (vegaResults.length > 0) {
-          html += '<div class="text-[10px] font-bold text-brand-emerald uppercase tracking-wider px-2 pt-2">VegaMovies Matches</div>';
-          html += vegaResults.map(v => {
-            const thumb = v.thumbnail || 'https://upload.wikimedia.org/wikipedia/commons/6/65/No-Image-Placeholder.svg';
-            return `
-              <div onclick="playDirectVegaUrl('${v.fullUrl}')" class="flex items-center gap-3 p-2 rounded-xl hover:bg-brand-emerald/10 cursor-pointer transition-colors group">
-                <img src="${thumb}" alt="${v.title}" class="w-10 h-14 object-cover rounded-lg flex-shrink-0" />
-                <div class="flex-1 min-w-0">
-                  <div class="text-xs font-bold text-white group-hover:text-brand-emerald truncate">${v.title}</div>
-                  <div class="text-[11px] text-gray-400 mt-0.5">Stream & Drivers</div>
-                </div>
-                <div class="text-xs font-semibold px-2 py-1 rounded bg-brand-emerald/20 text-brand-emerald group-hover:bg-brand-emerald group-hover:text-white transition-all">
-                  Watch
-                </div>
-              </div>
-            `;
-          }).join('');
+          html += `</div>`;
         }
 
         container.innerHTML = html;
@@ -803,14 +863,14 @@
 
     function playHeroMovie() {
       if (currentHeroMovie) {
-        selectMovie(currentHeroMovie.id);
+        selectMovie(currentHeroMovie.id, currentHeroMovie.media_type || 'movie', currentHeroMovie.title);
       } else {
         playDirectVegaUrl('https://new1.vegamovies.lease/download-avengers-infinity-war-2018-hindi-dubbed-480p-720p-1080p-2160p-4k/');
       }
     }
 
     function openHeroDetails() {
-      if (currentHeroMovie) selectMovie(currentHeroMovie.id);
+      if (currentHeroMovie) selectMovie(currentHeroMovie.id, currentHeroMovie.media_type || 'movie', currentHeroMovie.title);
     }
 
     function renderMovieGrid(movies) {
@@ -823,23 +883,29 @@
       grid.innerHTML = movies.map(m => {
         const poster = m.poster_path ? `${TMDB_IMG_POSTER}${m.poster_path}` : 'https://upload.wikimedia.org/wikipedia/commons/6/65/No-Image-Placeholder.svg';
         const year = m.release_date ? m.release_date.split('-')[0] : 'N/A';
-        const rating = m.vote_average ? m.vote_average.toFixed(1) : 'NR';
+        const rating = m.vote_average ? Number(m.vote_average).toFixed(1) : 'NR';
+        const isTv = m.media_type === 'tv' || (!m.title && m.name);
+        const title = m.title || m.name || 'Untitled';
+        const mType = isTv ? 'tv' : 'movie';
 
         return `
-          <div onclick="selectMovie(${m.id})" class="poster-hover group cursor-pointer flex flex-col bg-brand-card rounded-2xl overflow-hidden border border-brand-border hover:border-brand-emerald/60 transition-all duration-300 hover:shadow-xl hover:shadow-brand-emerald/10">
+          <div onclick="selectMovie(${m.id}, '${mType}', '${escapeJs(title)}')" class="poster-hover group cursor-pointer flex flex-col bg-brand-card rounded-2xl overflow-hidden border border-brand-border hover:border-brand-emerald/60 transition-all duration-300 hover:shadow-xl hover:shadow-brand-emerald/10">
             <div class="relative aspect-[2/3] overflow-hidden bg-black/60">
-              <img src="${poster}" alt="${m.title}" loading="lazy" class="w-full h-full object-cover transition-transform duration-500" />
+              <img src="${poster}" alt="${escapeJs(title)}" loading="lazy" class="w-full h-full object-cover transition-transform duration-500" />
               <div class="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                 <div class="w-12 h-12 rounded-full bg-brand-emerald text-white flex items-center justify-center shadow-lg transform translate-y-4 group-hover:translate-y-0 transition-transform">
                   <i data-lucide="play" class="w-6 h-6 fill-current ml-0.5"></i>
                 </div>
+              </div>
+              <div class="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-md bg-black/75 backdrop-blur-md text-[10px] font-extrabold uppercase tracking-wider text-brand-cyan border border-brand-cyan/30">
+                ${isTv ? 'SERIES' : 'MOVIE'}
               </div>
               <div class="absolute top-2.5 right-2.5 px-2 py-0.5 rounded-md bg-black/70 backdrop-blur-md text-[11px] font-bold text-yellow-400 flex items-center gap-1 border border-yellow-500/20">
                 <i data-lucide="star" class="w-3 h-3 fill-current"></i> ${rating}
               </div>
             </div>
             <div class="p-3 flex-1 flex flex-col justify-between">
-              <h3 class="text-xs font-bold text-white group-hover:text-brand-emerald transition-colors line-clamp-1" title="${m.title}">${m.title}</h3>
+              <h3 class="text-xs font-bold text-white group-hover:text-brand-emerald transition-colors line-clamp-1" title="${escapeJs(title)}">${title}</h3>
               <div class="flex items-center justify-between text-[11px] text-gray-400 mt-1">
                 <span>${year}</span>
                 <span class="text-brand-emerald font-medium">VegaMovies</span>
@@ -853,57 +919,164 @@
     }
 
     // ----------------------------------------------------
-    // SELECT MOVIE & VEGAMOVIES RESOLUTION
+    // SELECT MOVIE/SERIES & VEGAMOVIES RESOLUTION
     // ----------------------------------------------------
-    async function selectMovie(tmdbId) {
+    async function selectMovie(tmdbId, mediaType = 'movie', explicitTitle = '') {
       document.getElementById('searchDropdown').classList.add('hidden');
-      
-      const playerSection = document.getElementById('playerSection');
-      playerSection.classList.remove('hidden');
-      playerSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
-
-      player.showSpinner('Searching VegaMovies...');
+      showSearchToast(`Searching VegaMovies for ${explicitTitle || 'title'}...`);
 
       try {
-        const tmdbRes = await fetch(`${API_BASE}tmdb/movie/${tmdbId}`);
-        const movie = await tmdbRes.json();
+        let title = explicitTitle;
+        let releaseYear = '';
 
-        document.getElementById('pmTitle').innerText = movie.title;
-        document.getElementById('pmOriginalTitle').innerText = `${movie.original_title} (${(movie.release_date || '').split('-')[0]})`;
-        document.getElementById('playerMovieTitle').innerText = `${movie.title} (${(movie.release_date || '').split('-')[0]})`;
-        document.getElementById('pmOverview').innerText = movie.overview || 'No overview available.';
-        document.getElementById('pmRatingBadge').innerHTML = `<i data-lucide="star" class="w-4 h-4 fill-current"></i> ${(movie.vote_average || 0).toFixed(1)}`;
-        document.getElementById('pmYearBadge').innerText = (movie.release_date || '').split('-')[0] || '2024';
-        document.getElementById('pmRuntimeBadge').innerText = movie.runtime ? `${movie.runtime} min` : 'Full Movie';
-        document.getElementById('pmGenres').innerText = (movie.genres || []).map(g => g.name).join(', ') || 'Feature Film';
-        
-        const castNames = (movie.credits && movie.credits.cast) ? movie.credits.cast.slice(0, 4).map(c => c.name).join(', ') : 'Actors';
-        document.getElementById('pmCast').innerText = castNames;
-
-        const cleanTitle = movie.title.replace(/[:\-']/g, ' ').trim();
-        const vegaRes = await fetch(`${API_BASE}vegamovies/search?q=${encodeURIComponent(cleanTitle)}`);
-        const vegaData = await vegaRes.json();
-
-        if (!vegaData.hits || vegaData.hits.length === 0) {
-          const firstWord = cleanTitle.split(' ')[0];
-          const fallbackRes = await fetch(`${API_BASE}vegamovies/search?q=${encodeURIComponent(firstWord)}`);
-          const fallbackData = await fallbackRes.json();
-          if (fallbackData.hits && fallbackData.hits.length > 0) {
-            window.location.href = `watch.php?url=${encodeURIComponent(fallbackData.hits[0].fullUrl)}`;
-            return;
+        try {
+          const tmdbRes = await fetch(`${API_BASE}tmdb/${mediaType}/${tmdbId}`);
+          if (tmdbRes.ok) {
+            const item = await tmdbRes.json();
+            title = item.title || item.name || title;
+            releaseYear = (item.release_date || item.first_air_date || '').split('-')[0] || '';
           }
+        } catch (e) {
+          console.warn('TMDB details fetch fallback:', e);
+        }
 
-          player.hideSpinner();
-          alert(`Movie "${movie.title}" not yet indexed on VegaMovies. You can paste a direct VegaMovies link above!`);
+        if (!title) {
+          hideSearchToast();
+          alert('Could not determine movie or series title.');
           return;
         }
 
-        window.location.href = `watch.php?url=${encodeURIComponent(vegaData.hits[0].fullUrl)}`;
+        // Multi-tier VegaMovies Search
+        let hits = [];
+        const cleanTitle = title.replace(/[:\-']/g, ' ').replace(/\s+/g, ' ').trim();
+        
+        // Tier 1: Clean Title
+        showSearchToast(`Searching VegaMovies for "${cleanTitle}"...`);
+        const res1 = await fetch(`${API_BASE}vegamovies/search?q=${encodeURIComponent(cleanTitle)}`);
+        if (res1.ok) {
+          const d1 = await res1.json();
+          hits = d1.hits || [];
+        }
+
+        // Tier 2: First 2 Words (if multi-word and no hits)
+        if (hits.length === 0) {
+          const words = cleanTitle.split(/\s+/).filter(w => w.length > 1);
+          if (words.length > 2) {
+            const q2 = words.slice(0, 2).join(' ');
+            showSearchToast(`Searching VegaMovies for "${q2}"...`);
+            const res2 = await fetch(`${API_BASE}vegamovies/search?q=${encodeURIComponent(q2)}`);
+            if (res2.ok) {
+              const d2 = await res2.json();
+              hits = d2.hits || [];
+            }
+          }
+        }
+
+        // Tier 3: First Word
+        if (hits.length === 0) {
+          const words = cleanTitle.split(/\s+/).filter(w => w.length > 2);
+          if (words.length > 0) {
+            const firstWord = words[0];
+            showSearchToast(`Searching VegaMovies for "${firstWord}"...`);
+            const res3 = await fetch(`${API_BASE}vegamovies/search?q=${encodeURIComponent(firstWord)}`);
+            if (res3.ok) {
+              const d3 = await res3.json();
+              hits = d3.hits || [];
+            }
+          }
+        }
+
+        hideSearchToast();
+
+        if (hits.length === 1) {
+          window.location.href = `watch.php?url=${encodeURIComponent(hits[0].fullUrl)}`;
+        } else if (hits.length > 1) {
+          showVegaVersionsModal(title, hits);
+        } else {
+          alert(`Movie/Series "${title}" not found on VegaMovies.\nYou can search with different keywords or paste a direct VegaMovies link!`);
+        }
 
       } catch (err) {
-        player.hideSpinner();
-        alert('Failed to load movie: ' + err.message);
+        hideSearchToast();
+        alert('Error connecting to VegaMovies: ' + err.message);
       }
+    }
+
+    // ----------------------------------------------------
+    // VEGAMOVIES VERSION SELECTION MODAL
+    // ----------------------------------------------------
+    function showVegaVersionsModal(title, hits) {
+      const modal = document.getElementById('vegaVersionsModal');
+      const modalTitle = document.getElementById('vegaModalTitle');
+      const modalSubtitle = document.getElementById('vegaModalSubtitle');
+      const list = document.getElementById('vegaVersionsList');
+
+      modalTitle.innerText = `Select Release: ${title}`;
+      modalSubtitle.innerText = `${hits.length} VegaMovies releases/seasons found. Pick your preferred version:`;
+
+      list.innerHTML = hits.map(hit => {
+        const thumb = hit.thumbnail || 'https://upload.wikimedia.org/wikipedia/commons/6/65/No-Image-Placeholder.svg';
+        let tags = [];
+        if (/season\s*\d+/i.test(hit.title)) {
+          const sMatch = hit.title.match(/season\s*\d+(?:\s*[-–]\s*\d+)?/i);
+          if (sMatch) tags.push(`<span class="px-2 py-0.5 rounded bg-brand-cyan/20 text-brand-cyan border border-brand-cyan/30 text-[10px] font-bold uppercase">${sMatch[0]}</span>`);
+        }
+        if (/hindi|dual\s*audio/i.test(hit.title)) {
+          tags.push(`<span class="px-2 py-0.5 rounded bg-brand-emerald/20 text-brand-emerald border border-brand-emerald/30 text-[10px] font-bold uppercase">Dual Audio</span>`);
+        }
+        if (/4k|2160p/i.test(hit.title)) {
+          tags.push(`<span class="px-2 py-0.5 rounded bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 text-[10px] font-bold">4K</span>`);
+        } else if (/1080p/i.test(hit.title)) {
+          tags.push(`<span class="px-2 py-0.5 rounded bg-purple-500/20 text-purple-400 border border-purple-500/30 text-[10px] font-bold">1080p</span>`);
+        } else if (/720p/i.test(hit.title)) {
+          tags.push(`<span class="px-2 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/30 text-[10px] font-bold">720p</span>`);
+        }
+
+        return `
+          <div class="p-3.5 bg-[#0e1015] border border-brand-border hover:border-brand-emerald/60 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 transition-all">
+            <div class="flex items-center gap-3 min-w-0">
+              <img src="${thumb}" alt="${escapeJs(hit.title)}" class="w-12 h-16 object-cover rounded-xl flex-shrink-0 border border-brand-border/60" />
+              <div class="min-w-0">
+                <h4 class="text-xs sm:text-sm font-bold text-white line-clamp-2 leading-snug">${hit.title}</h4>
+                <div class="flex flex-wrap items-center gap-1.5 mt-1.5">
+                  ${tags.join(' ')}
+                  <span class="text-[10px] text-gray-400 font-medium">VegaMovies Direct</span>
+                </div>
+              </div>
+            </div>
+            <button onclick="playDirectVegaUrl('${hit.fullUrl}')" class="w-full sm:w-auto flex-shrink-0 flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-brand-emerald hover:bg-emerald-600 text-white font-bold text-xs shadow-lg shadow-brand-emerald/20 transition-all">
+              <i data-lucide="play" class="w-3.5 h-3.5 fill-current"></i>
+              <span>Stream Now</span>
+            </button>
+          </div>
+        `;
+      }).join('');
+
+      modal.classList.remove('hidden');
+      lucide.createIcons();
+    }
+
+    function closeVegaVersionsModal() {
+      const modal = document.getElementById('vegaVersionsModal');
+      if (modal) modal.classList.add('hidden');
+    }
+
+    function showSearchToast(text) {
+      const toast = document.getElementById('searchToast');
+      const span = document.getElementById('searchToastText');
+      if (toast && span) {
+        span.innerText = text;
+        toast.classList.remove('hidden');
+      }
+    }
+
+    function hideSearchToast() {
+      const toast = document.getElementById('searchToast');
+      if (toast) toast.classList.add('hidden');
+    }
+
+    function escapeJs(str) {
+      return (str || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '&quot;');
     }
 
     // ----------------------------------------------------

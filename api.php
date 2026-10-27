@@ -96,16 +96,55 @@ if ($endpoint === 'tmdb/search' || $endpoint === 'tmdb_search') {
         exit;
     }
     $page = $_GET['page'] ?? 1;
-    $url = TMDB_BASE_URL . "/search/movie?api_key=" . TMDB_API_KEY . "&query=" . urlencode($q) . "&page={$page}&include_adult=false";
+    // Multi-search to find both Movies AND Web Series / TV Shows
+    $url = TMDB_BASE_URL . "/search/multi?api_key=" . TMDB_API_KEY . "&query=" . urlencode($q) . "&page={$page}&include_adult=false";
     $res = curlGet($url);
-    echo $res['body'];
+    $data = json_decode($res['body'] ?? '{}', true);
+
+    $results = [];
+    if (isset($data['results']) && is_array($data['results'])) {
+        foreach ($data['results'] as $item) {
+            if (($item['media_type'] ?? '') === 'person') continue;
+            $results[] = [
+                'id' => $item['id'],
+                'title' => $item['title'] ?? ($item['name'] ?? 'Untitled'),
+                'original_title' => $item['original_title'] ?? ($item['original_name'] ?? ''),
+                'media_type' => $item['media_type'] ?? 'movie',
+                'poster_path' => $item['poster_path'] ?? null,
+                'backdrop_path' => $item['backdrop_path'] ?? null,
+                'overview' => $item['overview'] ?? '',
+                'release_date' => $item['release_date'] ?? ($item['first_air_date'] ?? ''),
+                'vote_average' => $item['vote_average'] ?? 0
+            ];
+        }
+    }
+
+    echo json_encode(['results' => $results]);
     exit;
 }
 
-if (preg_match('#^tmdb/movie/(\d+)$#', $endpoint, $m) || $endpoint === 'movie') {
-    $id = $m[1] ?? ($_GET['id'] ?? 0);
-    $url = TMDB_BASE_URL . "/movie/{$id}?api_key=" . TMDB_API_KEY . "&append_to_response=external_ids,credits,videos,recommendations";
+if (preg_match('#^tmdb/(movie|tv)/(\d+)$#', $endpoint, $m) || $endpoint === 'movie' || $endpoint === 'tv') {
+    $type = $m[1] ?? ($_GET['type'] ?? 'movie');
+    $id = $m[2] ?? ($_GET['id'] ?? 0);
+    $url = TMDB_BASE_URL . "/{$type}/{$id}?api_key=" . TMDB_API_KEY . "&append_to_response=external_ids,credits,videos,recommendations";
     $res = curlGet($url);
+    if ($res['status'] === 200) {
+        $body = json_decode($res['body'], true);
+        if (is_array($body)) {
+            if (!isset($body['title']) && isset($body['name'])) {
+                $body['title'] = $body['name'];
+            }
+            if (!isset($body['original_title']) && isset($body['original_name'])) {
+                $body['original_title'] = $body['original_name'];
+            }
+            if (!isset($body['release_date']) && isset($body['first_air_date'])) {
+                $body['release_date'] = $body['first_air_date'];
+            }
+            $body['media_type'] = $type;
+            echo json_encode($body);
+            exit;
+        }
+    }
     echo $res['body'];
     exit;
 }
